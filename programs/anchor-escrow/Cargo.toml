@@ -1,7 +1,7 @@
 [package]
-description = "Created with Anchor"
-edition = "2018"
 name = "anchor-escrow"
+description = "Created with Anchor"
+edition = "2021"
 version = "0.1.0"
 
 [lib]
@@ -9,12 +9,16 @@ crate-type = ["cdylib", "lib"]
 name = "anchor_escrow"
 
 [features]
-cpi = ["no-entrypoint"]
-default = []
 no-entrypoint = []
 no-idl = []
+no-log-ix-name = []
+cpi = ["no-entrypoint"]
+default = []
+
+[profile.release]
+overflow-checks = true
 
 [dependencies]
-anchor-lang = "0.22.0"
-anchor-spl = {version = "0.22.0"}
+anchor-lang = "0.24.2"
+anchor-spl = {version = "0.24.2"}
 spl-token = {version = "3.3.0", features = ["no-entrypoint"]}

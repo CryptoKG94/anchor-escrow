@@ -7,11 +7,13 @@ import { TOKEN_PROGRAM_ID, Token } from "@solana/spl-token";
 import { assert } from "chai";
 
 describe('anchor-escrow', () => {
-  const commitment: Commitment = 'processed';
-  const connection = new Connection('https://rpc-mainnet-fork.dappio.xyz', { commitment, wsEndpoint: 'wss://rpc-mainnet-fork.dappio.xyz/ws' });
-  const options = anchor.Provider.defaultOptions();
-  const wallet = NodeWallet.local();
-  const provider = new anchor.Provider(connection, wallet, options);
+  // const commitment: Commitment = 'processed';
+  // const connection = new Connection('https://rpc-mainnet-fork.dappio.xyz', { commitment, wsEndpoint: 'wss://rpc-mainnet-fork.dappio.xyz/ws' });
+  // const options = anchor.Provider.defaultOptions();
+  // const wallet = NodeWallet.local();
+  // const provider = new anchor.Provider(connection, wallet, options);
+
+  const provider = anchor.AnchorProvider.env();
 
   anchor.setProvider(provider);
 
@@ -43,26 +45,39 @@ describe('anchor-escrow', () => {
       "processed"
     );
 
-    // Fund Main Accounts
-    await provider.send(
-      (() => {
-        const tx = new Transaction();
-        tx.add(
-          SystemProgram.transfer({
-            fromPubkey: payer.publicKey,
-            toPubkey: initializerMainAccount.publicKey,
-            lamports: 100000000,
-          }),
-          SystemProgram.transfer({
-            fromPubkey: payer.publicKey,
-            toPubkey: takerMainAccount.publicKey,
-            lamports: 100000000,
-          })
-        );
-        return tx;
-      })(),
-      [payer]
+    await provider.connection.confirmTransaction(
+      await provider.connection.requestAirdrop(initializerMainAccount.publicKey, 1000000000),
+      "processed"
     );
+
+    // await provider.connection.confirmTransaction(
+    //   await provider.connection.requestAirdrop(escrowAccount.publicKey, 100000000),
+    //   "processed"
+    // );
+
+    await provider.connection.confirmTransaction(
+      await provider.connection.requestAirdrop(provider.wallet.publicKey, 1000000000),
+      "processed"
+    );
+
+    let blockhash = await (await provider.connection.getLatestBlockhash('finalized')).blockhash;
+    // Fund Main Accounts
+    const tx = new Transaction();
+    tx.add(
+      SystemProgram.transfer({
+        fromPubkey: payer.publicKey,
+        toPubkey: initializerMainAccount.publicKey,
+        lamports: 100000000,
+      }),
+      SystemProgram.transfer({
+        fromPubkey: payer.publicKey,
+        toPubkey: takerMainAccount.publicKey,
+        lamports: 100000000,
+      })
+    );
+    tx.recentBlockhash = blockhash;
+    tx.feePayer = provider.wallet.publicKey;
+    await provider.wallet.signTransaction(tx);
 
     mintA = await Token.createMint(
       provider.connection,
@@ -147,7 +162,6 @@ describe('anchor-escrow', () => {
     );
 
     let _vault = await mintA.getAccountInfo(vault_account_pda);
-
     let _escrowAccount = await program.account.escrowAccount.fetch(
       escrowAccount.publicKey
     );
